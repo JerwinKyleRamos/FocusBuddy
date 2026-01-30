@@ -1,9 +1,20 @@
+from collections import deque
+
 import cv2
 import mediapipe as mp
 import numpy as np
+import pygame
+from collections import deque
+
+pygame.mixer.init()
+pygame.mixer.music.load('Alarm/mixkit-facility-alarm-sound-999.wav')
 
 cam = cv2.VideoCapture(0)
 face_mesh = mp.solutions.face_mesh.FaceMesh(refine_landmarks=True) #outputs all 478 face landmarks
+
+HISTORY_LENGTH = 5
+h_ratio_history = deque(maxlen=HISTORY_LENGTH)
+v_ratio_history = deque(maxlen=HISTORY_LENGTH)
 
 while True:
     _, frame = cam.read()
@@ -93,7 +104,7 @@ while True:
         else:
             turn_ratio_y = 0
 
-        head_facing_screen = (turn_ratio_x < 0.70) and (turn_ratio_y < 0.40)
+        head_facing_screen = (turn_ratio_x < 0.80) and (turn_ratio_y < 0.80)
 
         # Detects what direction your pupils are facing
         def gaze_ratio_horizontal(iris, left_corner, right_corner):
@@ -117,28 +128,31 @@ while True:
         left_v = gaze_ratio_vertical(left_pupil_center, left_upper,left_lower)
         right_v = gaze_ratio_vertical(right_pupil_center, right_upper, right_lower)
         avg_v = (left_v + right_v) / 2
+        # print(avg_v)
+
+        h_ratio_history.append(avg_h)
+        v_ratio_history.append(avg_v)
+        smooth_h = np.mean(h_ratio_history)
+        smooth_v = np.mean(v_ratio_history)
+
+        print(smooth_h, smooth_v)
 
         # Eyes centered thresholds
-        eyes_centered = (0.30 < avg_h < 0.70) and (0.35 < avg_v < 0.65)
+        eyes_centered = (0.20 < smooth_h < 0.70) and (0.49 < smooth_v < 0.65)
 
-        turn_threshold = 0.5
         # --- FINAL DECISION ---
         if eyes_centered:
-
             is_looking_at_screen = True
-            # Extreme head turn override
-            if turn_ratio_x > turn_threshold or turn_ratio_y > turn_threshold:
+            if turn_ratio_x > head_facing_screen or turn_ratio_y > head_facing_screen:
                 is_looking_at_screen = False
         else:
             is_looking_at_screen = False
 
+
         if is_looking_at_screen:
             status_text = "LOOKING AT SCREEN"
-            print(status_text)
         else:
             status_text = "LOOKING AWAY"
-            print(status_text)
-
         cv2.putText(frame, status_text, (30, 50),
                     cv2.FONT_HERSHEY_SIMPLEX, 1, (0, 0, 255), 2)
 
