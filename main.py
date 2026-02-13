@@ -75,7 +75,6 @@ while True:
         right_pupil_center = np.mean(right_pupil_points, axis=0).astype(int)
 
 
-
         # --------------- HEAD POSITION LANDMARK ----------
         # (LEFT AND RIGHT)
         left_face_x = int(landmarks[234].x * frame_width)
@@ -107,8 +106,8 @@ while True:
         else:
             turn_ratio_y = 0
 
-        head_facing_screen = (1.0 >= turn_ratio_x < 0.80) and (turn_ratio_y < 0.80)
-        print(head_facing_screen, turn_ratio_x, turn_ratio_y)
+        head_facing_screen = (turn_ratio_x < 0.80) and (turn_ratio_y < 0.20)
+        print(turn_ratio_y)
 
         # Detects what direction your pupils are facing
         def gaze_ratio_horizontal(left_corner, right_corner, iris):
@@ -146,10 +145,8 @@ while True:
         # cv2.circle(frame, tuple(right_pupil_center), 4, (0, 255, 0), -1)
 
         # --- FINAL DECISION ---
-        if eyes_centered:
+        if eyes_centered and head_facing_screen:
             is_looking_at_screen = True
-            if turn_ratio_x > head_facing_screen or turn_ratio_y > head_facing_screen:
-                is_looking_at_screen = False
         else:
             is_looking_at_screen = False
 
@@ -177,4 +174,7 @@ while True:
                 alarm_on = False
 
     cv2.imshow(' Focus Buddy ', frame)
-    cv2.waitKey(1)
+    if cv2.waitKey(1) == ord('q'):
+        break
+cam.release()
+cv2.destroyAllWindows()
